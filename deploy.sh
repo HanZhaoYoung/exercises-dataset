@@ -3,9 +3,10 @@
 # 一键部署脚本 — 健身动作数据服务
 # 用法:
 #   ./deploy.sh            增量部署（代码/数据，不含媒体，快）
-#   ./deploy.sh full       全量部署（含 videos/images 媒体，慢）
+#   ./deploy.sh full       全量部署（含 videos/images 媒体，直接 scp 到服务器挂载目录）
 #   ./deploy.sh <其他文件>  增量并追加指定文件（如 ./deploy.sh server/server.js）
 # 流程: 打包 → scp 上传 → 服务器 docker build → 重启容器 → 健康检查
+# 媒体策略: 不入 git/镜像，由本机直接推送服务器 /root/videos、/root/images（容器挂载）
 # ============================================================
 set -euo pipefail
 
@@ -45,7 +46,9 @@ ssh -i "$KEY" "$SERVER" "
   tar xzf '$TMP_TGZ' 2>/dev/null; \
   docker build -t $APP . > /dev/null 2>&1 && \
   docker rm -f $APP > /dev/null 2>&1 || true && \
-  docker run -d --name $APP -p $PORT:$PORT --restart unless-stopped $APP > /dev/null && \
+  docker run -d --name $APP -p $PORT:$PORT \
+    -v $REMOTE_DIR/videos:/app/videos -v $REMOTE_DIR/images:/app/images \
+    --restart unless-stopped $APP > /dev/null && \
   sleep 2 && \
   if curl -s --max-time 8 http://127.0.0.1:$PORT/health | grep -q '\"status\": *\"ok\"'; then \
     echo '   ✔ 健康检查通过，部署成功'; \

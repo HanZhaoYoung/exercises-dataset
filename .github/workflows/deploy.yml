@@ -38,7 +38,9 @@ jobs:
               -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
             docker pull $IMAGE:latest
             docker rm -f exercises-api >/dev/null 2>&1 || true
+            # 媒体（GIF/缩略图）由挂载卷提供，由本机 scp 维护，不入镜像
             docker run -d --name exercises-api -p 3000:3000 \
+              -v /root/videos:/app/videos -v /root/images:/app/images \
               --restart unless-stopped $IMAGE:latest
             sleep 3
             if curl -sf http://127.0.0.1:3000/health | grep -q '"status": *"ok"'; then
