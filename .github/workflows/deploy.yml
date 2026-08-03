@@ -35,9 +35,7 @@ jobs:
           username: root
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            echo "${{ secrets.ALIYUN_ACR_PASSWORD }}" | \
-              docker login ${{ env.REGISTRY }} \
-              -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
+            # 服务器已通过 docker login 保存凭据（/root/.docker/config.json），无需重复登录
             docker pull $IMAGE:latest
             docker rm -f exercises-api >/dev/null 2>&1 || true
             # 媒体（GIF/缩略图）由挂载卷提供，由本机 scp 维护，不入镜像
