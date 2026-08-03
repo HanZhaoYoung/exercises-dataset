@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: registry.cn-hangzhou.aliyuncs.com/yhz0831/exercises-api
+  # ACR 个人版专属实例域名（成都地域，用户账号 crpi-q1ks31uh0havhu7p）
+  REGISTRY: crpi-q1ks31uh0havhu7p.cn-chengdu.personal.cr.aliyuncs.com
+  IMAGE: crpi-q1ks31uh0havhu7p.cn-chengdu.personal.cr.aliyuncs.com/yhz0831/exercises-api
 
 jobs:
   build-and-deploy:
@@ -17,7 +19,7 @@ jobs:
       - name: 登录阿里云 ACR
         run: |
           echo "${{ secrets.ALIYUN_ACR_PASSWORD }}" | \
-            docker login registry.cn-hangzhou.aliyuncs.com \
+            docker login $REGISTRY \
             -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
 
       - name: 构建并推送镜像（latest + commit sha）
@@ -34,7 +36,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             echo "${{ secrets.ALIYUN_ACR_PASSWORD }}" | \
-              docker login registry.cn-hangzhou.aliyuncs.com \
+              docker login ${{ env.REGISTRY }} \
               -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
             docker pull $IMAGE:latest
             docker rm -f exercises-api >/dev/null 2>&1 || true
