@@ -11,7 +11,7 @@ env:
   IMAGE: crpi-q1ks31uh0havhu7p.cn-chengdu.personal.cr.aliyuncs.com/yhz0831/exercises-api
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,23 +28,5 @@ jobs:
           docker push $IMAGE:latest
           docker push $IMAGE:${{ github.sha }}
 
-      - name: SSH 触发服务器部署
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 47.108.133.181
-          username: root
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            # 服务器已通过 docker login 保存凭据（/root/.docker/config.json），无需重复登录
-            docker pull $IMAGE:latest
-            docker rm -f exercises-api >/dev/null 2>&1 || true
-            # 媒体（GIF/缩略图）由挂载卷提供，由本机 scp 维护，不入镜像
-            docker run -d --name exercises-api -p 3000:3000 \
-              -v /root/videos:/app/videos -v /root/images:/app/images \
-              --restart unless-stopped $IMAGE:latest
-            sleep 3
-            if curl -sf http://127.0.0.1:3000/health | grep -q '"status": *"ok"'; then
-              echo "✔ 部署成功: $IMAGE:latest"
-            else
-              echo "✗ 健康检查失败:"; docker logs --tail 20 exercises-api; exit 1
-            fi
+      # 部署由服务器自动完成：cron 每分钟执行 /root/auto-deploy.sh，
+      # 检测到 ACR latest 镜像变化即拉取并重启容器（媒体由挂载卷提供，不入镜像）
