@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: registry.cn-hangzhou.aliyuncs.com/hanyoung/exercises-api
+  IMAGE: registry.cn-hangzhou.aliyuncs.com/yhz0831/exercises-api
 
 jobs:
   build-and-deploy:
