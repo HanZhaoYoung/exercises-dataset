@@ -1,0 +1,48 @@
+name: 构建推送部署
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE: registry.cn-hangzhou.aliyuncs.com/hanyoung/exercises-api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 登录阿里云 ACR
+        run: |
+          echo "${{ secrets.ALIYUN_ACR_PASSWORD }}" | \
+            docker login registry.cn-hangzhou.aliyuncs.com \
+            -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
+
+      - name: 构建并推送镜像（latest + commit sha）
+        run: |
+          docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+
+      - name: SSH 触发服务器部署
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 47.108.133.181
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            echo "${{ secrets.ALIYUN_ACR_PASSWORD }}" | \
+              docker login registry.cn-hangzhou.aliyuncs.com \
+              -u "${{ secrets.ALIYUN_ACR_USERNAME }}" --password-stdin
+            docker pull $IMAGE:latest
+            docker rm -f exercises-api >/dev/null 2>&1 || true
+            docker run -d --name exercises-api -p 3000:3000 \
+              --restart unless-stopped $IMAGE:latest
+            sleep 3
+            if curl -sf http://127.0.0.1:3000/health | grep -q '"status": *"ok"'; then
+              echo "✔ 部署成功: $IMAGE:latest"
+            else
+              echo "✗ 健康检查失败:"; docker logs --tail 20 exercises-api; exit 1
+            fi
